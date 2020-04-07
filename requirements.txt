@@ -1,0 +1,4 @@
+numpy 
+pandas
+music21
+pretty_midi
