@@ -14,3 +14,4 @@ The Lakh MIDI Dataset v0.1: https://colinraffel.com/projects/lmd/#get
 
 The MAESTRO Dataset: https://magenta.tensorflow.org/datasets/maestro
 
+The Groove Dataset: https://magenta.tensorflow.org/datasets/groove
