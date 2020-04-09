@@ -25,5 +25,7 @@ The Groove Dataset: https://magenta.tensorflow.org/datasets/groove
 
 ## Use Pretty_MIDI(https://github.com/craffel/pretty-midi) to preprocess MIDI music file to sequential dataset
 
-![midi_note_3](images/midi_seq.gif)
+![midi_note_3](images/midi_seq.png)
 
+The following matrix shows a piece of training data
+![midi_note_4](images/midi_ex.png)
