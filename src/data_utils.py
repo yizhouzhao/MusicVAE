@@ -81,12 +81,12 @@ class MidiDataset(Dataset):
             midi_end (int): The last midi note in the dataset
         """
 
-        dtypes = {'piano_roll_name': 'object', 'timestep': 'uint32'}
+        dtypes = {'piano_roll_name': 'str', 'timestep': 'uint32'}
         column_names = [pretty_midi.note_number_to_name(n) for n in range(midi_start, midi_end)]
         for column in column_names:
             dtypes[column] = 'uint8'
 
-        self.piano_rolls = pd.read_csv(csv_file, sep=';', index_col=['piano_roll_name', 'timestep'], dtype=dtypes)
+        self.piano_rolls = pd.read_csv(csv_file, sep=',', index_col=['piano_roll_name', 'timestep'], dtype=dtypes)
         self.transform = transform
 
         self.init_dataset()
