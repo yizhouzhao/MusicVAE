@@ -47,4 +47,11 @@ n_layers_decoder=3 #not being used rn cuz number of layers is incorrect
 latent_features=64 #latent space dimension
 sequence_length = 16 #notes per decoder
 dropout_rate = 0.2
+
+'''
+TRAIN
+'''
 learning_rate = 1e-3
+num_epochs = 5
+warmup_epochs = 90
+pre_warmup_epochs = 10

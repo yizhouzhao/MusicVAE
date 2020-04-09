@@ -127,3 +127,6 @@ data/
 
 # training data
 training_data/
+
+# logs
+# records/

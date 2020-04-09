@@ -45,9 +45,6 @@ if __name__ == "__main__":
     loss_function = ELBO_loss
 
     #Learning rate: warmup and decay
-    num_epochs = 100
-    warmup_epochs= 90
-    pre_warmup_epochs = 10
     warmup_lerp = 1/warmup_epochs
 
     if warmup_epochs > num_epochs - pre_warmup_epochs:
@@ -153,3 +150,5 @@ if __name__ == "__main__":
 
         print("train_loss:", train_loss[-1], np.mean(train_loss))
         print("valid_loss:", valid_loss[-1], np.mean(valid_loss))
+
+    torch.save(net.state_dict(),'records/net_Apr_9th.pt')
