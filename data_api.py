@@ -2,12 +2,13 @@ from src.data_utils import transposer, encode_dummies, chopster, trim_blanks, mi
 import pretty_midi
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
 import os
 
 print(os.getcwd())
 
 
-def PreprocessMIDIPiano(midi_file : str, save_file : str):
+def PreprocessMIDIPiano(midi_file : str, save_file : str, append_csv = False):
     '''
     Preprocess MIDI music file to data matrix for training
     :param
@@ -16,15 +17,15 @@ def PreprocessMIDIPiano(midi_file : str, save_file : str):
     :return:
     '''
 
-    saved_columns = [pretty_midi.note_number_to_name(n) for n in range(48, 108)]
-    piano_rolls = pd.DataFrame(columns=['piano_roll_name', 'timestep'] + saved_columns)
-    piano_rolls = piano_rolls.set_index(['piano_roll_name', 'timestep'])
-
-    piano_rolls.to_csv(save_file, sep=',', encoding='utf-8')
+    if not append_csv:
+        saved_columns = [pretty_midi.note_number_to_name(n) for n in range(36, 96)]
+        piano_rolls = pd.DataFrame(columns=['piano_roll_name', 'timestep'] + saved_columns)
+        piano_rolls = piano_rolls.set_index(['piano_roll_name', 'timestep'])
+        piano_rolls.to_csv(save_file, sep=',', encoding='utf-8')
 
     #Identify the music key: Major or Minor
-    semi_shift = transposer(midi_file)
-
+    #semi_shift = transposer(midi_file)
+    #print("shift")
     #Read midi file
     pm = pretty_midi.PrettyMIDI(midi_file)
 
@@ -41,8 +42,8 @@ def PreprocessMIDIPiano(midi_file : str, save_file : str):
 
     #if the music if a major, shift its scale to C major
     #if the music if a minor, shift its scale to A minor
-    for note in instrument.notes:
-        note.pitch += semi_shift
+    #for note in instrument.notes:
+    #    note.pitch += semi_shift
 
     #encode midi to data frame
     df = encode_dummies(instrument, sampling_freq).fillna(value=0)
@@ -61,13 +62,31 @@ def PreprocessMIDIPiano(midi_file : str, save_file : str):
     df['timestep'] = df.index
     df['piano_roll_name'] = midi_file
     df = df.set_index(['piano_roll_name', 'timestep'])
-    print(df.head())
+    #print(df.head())
     df.to_csv(save_file, sep=',', mode='a', encoding='utf-8', header=False)
 
 
-midi_file = 'E:/researches/music_vae/data/2004\\MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
+def PreprocessMIDIPianoFiles(midi_files : list, save_file : str):
+    '''
+    Preprocess MIDI music files to csv file
+    :param
+    midi_files:the name of the music file of MIDI format
+    save_file: the name of the saving file
+    '''
+    has_file = False
+    for midi_file in tqdm(midi_files):
+        #print(midi_file)
+        if not has_file:
+            PreprocessMIDIPiano(midi_file, save_file, False)
+            has_file = True
+        else:
+            PreprocessMIDIPiano(midi_file, save_file, True)
 
-PreprocessMIDIPiano(midi_file, "piano_roll.csv")
-
-rolls = pd.read_csv("piano_roll.csv", sep=',', index_col=['piano_roll_name', 'timestep'])
-print(rolls.head())
+if __name__ == "__main__":
+    pass
+    # midi_file = 'E:/researches/music_vae/data/2004\\MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
+    #
+    # PreprocessMIDIPiano(midi_file, "piano_roll.csv")
+    #
+    # rolls = pd.read_csv("piano_roll.csv", sep=',', index_col=['piano_roll_name', 'timestep'])
+    # print(rolls.head())

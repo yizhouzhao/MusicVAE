@@ -117,10 +117,13 @@ venv.bak/
 .mypy_cache/
 
 #ipynb
-.ipynb
+*.ipynb
 
 # music data
 data/
 
 # pycharm data
 .idea/
+
+# training data
+training_data/
