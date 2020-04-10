@@ -55,3 +55,8 @@ learning_rate = 1e-3
 num_epochs = 5
 warmup_epochs = 90
 pre_warmup_epochs = 10
+
+'''
+NEW MODEL
+'''
+m_key_count = 2 #number of key pressed at one time

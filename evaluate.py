@@ -1,9 +1,9 @@
-from params import *
-from model import VariationalAutoencoder
+from src.params import *
+from src.model import VariationalAutoencoder
 import matplotlib.pyplot as plt
-from midi_builder import MidiBuilder
-builder = MidiBuilder()
+from src.midi_builder import MidiBuilder
 
+builder = MidiBuilder()
 
 ''' 
 Create model and load state dict from path
@@ -14,7 +14,6 @@ def loadModel(path):
     model.eval()
 
     return model
-
 
 '''
 Show reconstructions of the model

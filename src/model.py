@@ -108,8 +108,11 @@ class VariationalAutoencoder(nn.Module):
         # generate z - latent space
         z = mu + epsilon * sigma
 
+        print("z sample", z.shape)
         # decrese space
         z = self.linear_z(z)
+        print("z sample", z.shape)
+        exit()
 
         # z=self.dropout(z)
 
