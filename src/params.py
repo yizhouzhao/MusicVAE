@@ -2,6 +2,7 @@ import numpy as np
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import optim
 from torch.nn.functional import softplus
 from torch.utils.data import Dataset, DataLoader
@@ -60,3 +61,5 @@ pre_warmup_epochs = 10
 NEW MODEL
 '''
 m_key_count = 2 #number of key pressed at one time
+m_key_energy_dim = 8 #structure attention
+use_new_model = True

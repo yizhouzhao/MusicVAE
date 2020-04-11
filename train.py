@@ -2,6 +2,7 @@ from src.params import *
 from src.model import VariationalAutoencoder
 from src.data_utils import MidiDataset, BarTransform
 from src.loss import  ELBO_loss
+from src.new_model import VAECell
 
 import time
 import os
@@ -33,7 +34,11 @@ if __name__ == "__main__":
     print("Train.py Train size: {}, Test size: {}".format(train_size, test_size))
 
     #Model
-    net = VariationalAutoencoder(latent_features, TEACHER_FORCING, eps_i = 1)
+    if use_new_model:
+        net = VAECell(latent_features)
+    else:
+        net = VariationalAutoencoder(latent_features, TEACHER_FORCING, eps_i = 1)
+
     if use_cuda:
         net = net.cuda()
 
@@ -94,13 +99,16 @@ if __name__ == "__main__":
             if epoch >= pre_warmup_epochs and use_scheduled_sampling:
                 eps_i = inv_sigmoid_decay(i_batch, rate=scheduled_decay_rate)
 
-            net.set_scheduled_sampling(eps_i)
+            if use_new_model:
+                pass
+            else:
+                net.set_scheduled_sampling(eps_i)
 
             outputs = net(x)
             x_hat = outputs['x_hat']
             mu, log_var = outputs['mu'], outputs['log_var']
 
-            elbo, kl, kl_w = loss_function(x_hat, x, mu, log_var, warmup_w)
+            elbo, kl, kl_w = loss_function(x_hat, x, mu, log_var, warmup_w, with_logits=use_new_model)
 
             optimizer.zero_grad()
             elbo.backward()
@@ -123,13 +131,17 @@ if __name__ == "__main__":
 
             x = x.to(device)
 
-            net.set_scheduled_sampling(1.)  # Please use teacher forcing for validations
+            if use_new_model:
+                pass
+            else:
+                net.set_scheduled_sampling(1)
+
             outputs = net(x)
             x_hat = outputs['x_hat']
             mu, log_var = outputs['mu'], outputs['log_var']
             z = outputs["z"]
 
-            elbo, kl, klw = loss_function(x_hat, x, mu, log_var, warmup_w)
+            elbo, kl, klw = loss_function(x_hat, x, mu, log_var, warmup_w, with_logits=use_new_model)
 
             # We save the latent variable and reconstruction for later use
             # we will need them on the CPU to plot
