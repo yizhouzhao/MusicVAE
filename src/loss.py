@@ -10,6 +10,10 @@ from params import use_cuda
 def ELBO_loss(y, t, mu, log_var, weight, with_logits = False):
     # Reconstruction error, log[p(x|z)]
     # Sum over features
+    print("ELBO_LOSS")
+    print(y.shape)
+    print(t.shape)
+    print(y)
     if with_logits == False:
         likelihood = -binary_cross_entropy(y, t, reduction="none")
     else:

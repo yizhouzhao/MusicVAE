@@ -140,6 +140,9 @@ class VAECell(nn.Module):
         #music notes record
         notes = torch.zeros(batch_size, note_length, NUM_PITCHES, device=device)
 
+        #music notes with multi_channel
+        multi_notes = torch.zeros(batch_size, note_length, m_key_count, NUM_PITCHES, device=device)
+
         the_input = torch.cat([note, x], dim=1)
 
         # creates hidden layer values
@@ -179,8 +182,8 @@ class VAECell(nn.Module):
         #print("z_list", z_list.shape)
 
         #Vertial attention
-        for i in range(note_length):
-            z_horizontal = z_list[:,i,:,:]
+        for i in range(note_length // NOTESPERBAR):
+            z_horizontal = z_list[:,16 * i,:,:]
             for j in range(m_key_count):
                 current_z = z_horizontal[:,j,:]
                 other_z = torch.cat((z_horizontal[:,:j,:], z_horizontal[:,(j+1):,:]),1)
@@ -201,8 +204,9 @@ class VAECell(nn.Module):
                 #print("current_c", current_c.shape)
 
                 embedding, (current_h, current_c) = self.conductor(conductor_input.unsqueeze(1), (current_h_conducter, current_c_conducter))
+                embedding = embedding.expand(batch_size, NOTESPERBAR, embedding.shape[2])
 
-                decoder_input = torch.cat([embedding, the_input[:, i:i+1, :]], dim=-1)
+                decoder_input = torch.cat([embedding, the_input[:, range(i * 16, i * 16 + 16), :]], dim=-1)
                 #print("embedding", embedding.shape)
                 #print("the_input[:, i, :]]", the_input.shape)
 
@@ -212,7 +216,8 @@ class VAECell(nn.Module):
                 #print("notes_cur", notes_cur.shape)
                 #print("aux", aux.shape)
 
-                notes[:, i:(i+1), :] += aux
+                multi_notes[:,range(i * 16, i * 16 + 16),j,:] = aux
+                notes[:, range(i * 16, i * 16 + 16), :] += aux
 
 
         #Horizontal attention
@@ -223,6 +228,7 @@ class VAECell(nn.Module):
         outputs["z"] = z
         outputs["mu"] = mu_list
         outputs["log_var"] = log_var_list
+        outputs["multi_notes"] = multi_notes
 
         return outputs
 

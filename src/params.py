@@ -53,7 +53,7 @@ dropout_rate = 0.2
 TRAIN
 '''
 learning_rate = 1e-3
-num_epochs = 5
+num_epochs = 100
 warmup_epochs = 90
 pre_warmup_epochs = 10
 
