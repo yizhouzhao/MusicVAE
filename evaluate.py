@@ -1,9 +1,9 @@
-from params import *
-from model import VariationalAutoencoder
+from src.params import *
+from src.model import VariationalAutoencoder
 import matplotlib.pyplot as plt
-from midi_builder import MidiBuilder
-builder = MidiBuilder()
+from src.midi_builder import MidiBuilder
 
+builder = MidiBuilder()
 
 ''' 
 Create model and load state dict from path
@@ -15,10 +15,59 @@ def loadModel(path):
 
     return model
 
-
 '''
 Show reconstructions of the model
 '''
+def showReconstructionsMultiNotes(multi_notes : torch.Tensor, x : torch.Tensor):
+    '''
+    :param multi_notes:  reconstructed multinotes
+    :param x: original notes
+    :return:
+    '''
+    multi_notes_np = x_hat.detach().numpy()
+
+
+    for i, seq in enumerate(multi_notes_np):
+        midi_out = np.zeros((multi_notes_np.shape[0],multi_notes_np.shape[2]))
+        for j in range(m_key_count):
+            x_j_np = seq[:, j, :]
+            row_maxes = seq.max(axis=1).reshape(-1, 1)
+            midi_out_j = np.where(seq == row_maxes, 1, 0)
+            midi_out += midi_out_j
+
+            # if np.all(midi_out[:, -1]):
+            #     print("Midi: {} is all silent at channel {}".format(i, j))
+            #     continue
+
+        midi = builder.midi_from_piano_roll(midi_out[:,:-1]) # Select all notes but the silent one
+        plt.figure(figsize=(10, 3))
+        plt.title("Midi {}".format(i))
+
+        builder.plot_midi(midi)
+        plt.savefig("midi/img_midi_{}.png".format(i))
+
+        midi.write('midi/{}.mid'.format(i))
+
+    # Compare to originals
+    x_np = x.detach().numpy()
+
+    for i, seq in enumerate(x_np):
+        midi_out = seq
+
+        if np.all(midi_out[:, -1]):
+            print("Midi: {} is all silent".format(i))
+            continue
+
+        midi = builder.midi_from_piano_roll(midi_out[:, :-1])  # Select all notes but the silent one
+        plt.figure(figsize=(10, 3))
+        plt.title("Orig Midi {}".format(i))
+
+        builder.plot_midi(midi)
+        plt.savefig("midi/img_midi_{}_orig.png".format(i))
+
+        midi.write('midi/{}_orig.mid'.format(i))
+
+
 def showReconstructions(model, x_hat, x):
     x_hat_np = x_hat.detach().numpy()
     
@@ -127,30 +176,31 @@ def generateFromLatentSpace(model, gen_batch=10, showPlot=True):
 '''
 Below is for testing
 '''
-from data_utils import MidiDataset, BarTransform
-from torch.autograd import Variable #deprecated!!!
+if __name__ == "__main__":
+    from data_utils import MidiDataset, BarTransform
+    from torch.autograd import Variable #deprecated!!!
 
-transform = BarTransform(bars=totalbars, note_count=NUM_PITCHES)
-midi_dataset = MidiDataset(csv_file='piano_rolls_a_small_fraction.csv', transform = transform)
-dataset_size = len(midi_dataset)           #number of musics on dataset
-test_size = int(test_split * dataset_size) #test size length
-train_size = dataset_size - test_size      #train data length
-train_dataset, test_dataset = random_split(midi_dataset, [train_size, test_size])
-test_loader = DataLoader(test_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=1)#, sampler=test_sampler)
+    transform = BarTransform(bars=totalbars, note_count=NUM_PITCHES)
+    midi_dataset = MidiDataset(csv_file='piano_rolls_a_small_fraction.csv', transform = transform)
+    dataset_size = len(midi_dataset)           #number of musics on dataset
+    test_size = int(test_split * dataset_size) #test size length
+    train_size = dataset_size - test_size      #train data length
+    train_dataset, test_dataset = random_split(midi_dataset, [train_size, test_size])
+    test_loader = DataLoader(test_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=1)#, sampler=test_sampler)
 
-model = loadModel('records/net_Apr_9th.pt')
+    model = loadModel('records/net_Apr_9th.pt')
 
-x = next(iter(test_loader))
-x = Variable(x['piano_rolls'].type('torch.FloatTensor'))
+    x = next(iter(test_loader))
+    x = Variable(x['piano_rolls'].type('torch.FloatTensor'))
 
-x = x.to(device)
+    x = x.to(device)
 
-model.set_scheduled_sampling(1.)  # Please use teacher forcing for validations
-outputs = model(x)
+    model.set_scheduled_sampling(1.)  # Please use teacher forcing for validations
+    outputs = model(x)
 
-x_hat = outputs['x_hat']
-x = x.to("cpu")
-x_hat = x_hat.to("cpu")
+    x_hat = outputs['x_hat']
+    x = x.to("cpu")
+    x_hat = x_hat.to("cpu")
 
-showReconstructions(model, x_hat, x)
-generateFromLatentSpace(model, 10, True)
+    showReconstructions(model, x_hat, x)
+    generateFromLatentSpace(model, 10, True)

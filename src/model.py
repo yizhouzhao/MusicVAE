@@ -66,7 +66,6 @@ class VariationalAutoencoder(nn.Module):
 
         the_input = torch.cat([note, x], dim=1)
 
-        # print(the_input.shape)
         outputs = {}
 
         # creates hidden layer values
@@ -110,6 +109,7 @@ class VariationalAutoencoder(nn.Module):
 
         # decrese space
         z = self.linear_z(z)
+
 
         # z=self.dropout(z)
 

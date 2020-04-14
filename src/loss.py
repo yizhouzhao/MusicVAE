@@ -1,16 +1,24 @@
 # directly taken from notebook, probably some adaptation might be needed
 import torch
-from torch.nn.functional import binary_cross_entropy
+from torch.nn.functional import binary_cross_entropy, binary_cross_entropy_with_logits
 from torch.distributions.normal import Normal
 from torch.distributions.kl import kl_divergence
 
 from params import use_cuda
 
 
-def ELBO_loss(y, t, mu, log_var, weight):
+def ELBO_loss(y, t, mu, log_var, weight, with_logits = False):
     # Reconstruction error, log[p(x|z)]
     # Sum over features
-    likelihood = -binary_cross_entropy(y, t, reduction="none")
+    print("ELBO_LOSS")
+    print(y.shape)
+    print(t.shape)
+    print(y)
+    if with_logits == False:
+        likelihood = -binary_cross_entropy(y, t, reduction="none")
+    else:
+        likelihood = -binary_cross_entropy_with_logits(y, t, reduction="none")
+
     likelihood = likelihood.view(likelihood.size(0), -1).sum(1)
 
     # Regularization error:
