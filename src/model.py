@@ -57,7 +57,7 @@ class VariationalAutoencoder(nn.Module):
         return tf
 
     def set_scheduled_sampling(self, eps_i):
-        self.eps_i = eps_i
+        self.eps_i = 1 #eps_i
 
     def forward(self, x):
         batch_size = x.size(0)

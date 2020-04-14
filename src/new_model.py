@@ -200,10 +200,11 @@ class VAECell(nn.Module):
                 conductor_input = torch.cat((current_z, context), dim = 1)
 
                 #print("conductor_input", conductor_input.shape)
-                #print("current_h", current_h.shape)
-                #print("current_c", current_c.shape)
+                # print("current_h", current_h.shape)
+                # print("current_c", current_c.shape)
 
-                embedding, (current_h, current_c) = self.conductor(conductor_input.unsqueeze(1), (current_h_conducter, current_c_conducter))
+
+                embedding, (current_h_conducter, current_c_conducter) = self.conductor(conductor_input.unsqueeze(1), (current_h_conducter, current_c_conducter))
                 embedding = embedding.expand(batch_size, NOTESPERBAR, embedding.shape[2])
 
                 decoder_input = torch.cat([embedding, the_input[:, range(i * 16, i * 16 + 16), :]], dim=-1)
@@ -217,7 +218,7 @@ class VAECell(nn.Module):
                 #print("aux", aux.shape)
 
                 multi_notes[:,range(i * 16, i * 16 + 16),j,:] = aux
-                notes[:, range(i * 16, i * 16 + 16), :] += aux
+                notes[:, range(i * 16, i * 16 + 16), :] += aux #!!!!!
 
 
         #Horizontal attention
