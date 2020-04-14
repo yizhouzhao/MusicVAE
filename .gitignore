@@ -130,3 +130,6 @@ training_data/
 
 # logs
 # records/
+
+#outout data
+midi/
