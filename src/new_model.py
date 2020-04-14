@@ -1,4 +1,4 @@
-from params import *
+from src.params import *
 
 class MLP(nn.Module):
     def __init__(self,

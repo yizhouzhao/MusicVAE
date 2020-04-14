@@ -1,4 +1,4 @@
-from params import *
+from src.params import *
 
 class VariationalAutoencoder(nn.Module):
     def __init__(self, latent_features, teacher_forcing, eps_i):
