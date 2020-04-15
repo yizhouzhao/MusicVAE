@@ -1,7 +1,7 @@
 from src.params import *
 from src.model import VariationalAutoencoder
 from src.data_utils import MidiDataset, BarTransform
-from src.loss import  ELBO_loss
+from src.loss import  ELBO_loss, ELBO_loss2
 from src.new_model import VAECell
 
 import time
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # define our optimizer
     # The Adam optimizer works really well with VAEs.
     optimizer = optim.Adam(net.parameters(), lr=learning_rate)
-    loss_function = ELBO_loss
+    loss_function = ELBO_loss2
 
     #Learning rate: warmup and decay
     warmup_lerp = 1/warmup_epochs
@@ -109,7 +109,8 @@ if __name__ == "__main__":
             x_hat = outputs['x_hat']
             mu, log_var = outputs['mu'], outputs['log_var']
 
-            elbo, kl, kl_w = loss_function(x_hat, x, mu, log_var, warmup_w, with_logits=use_new_model)
+            #elbo, kl, kl_w = loss_function(x_hat, x, mu, log_var, warmup_w, with_logits=False)
+            elbo, kl, kl_w = loss_function(x_hat, x, mu, log_var, warmup_w)
 
             optimizer.zero_grad()
             elbo.backward()
@@ -142,7 +143,7 @@ if __name__ == "__main__":
             mu, log_var = outputs['mu'], outputs['log_var']
             z = outputs["z"]
 
-            elbo, kl, klw = loss_function(x_hat, x, mu, log_var, warmup_w, with_logits=use_new_model)
+            elbo, kl, klw = loss_function(x_hat, x, mu, log_var, warmup_w)
 
             # We save the latent variable and reconstruction for later use
             # we will need them on the CPU to plot

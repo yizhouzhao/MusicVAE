@@ -213,12 +213,13 @@ class VAECell(nn.Module):
 
                 notes_cur, (current_h_decoder, current_c_decoder) = self.decoder(decoder_input, (current_h_decoder, current_c_decoder))
                 aux = self.linear(notes_cur)
+                aux = torch.sigmoid(aux)
 
                 #print("notes_cur", notes_cur.shape)
                 #print("aux", aux.shape)
 
                 multi_notes[:,range(i * 16, i * 16 + 16),j,:] = aux
-                notes[:, range(i * 16, i * 16 + 16), :] += aux #!!!!!
+                notes[:, range(i * 16, i * 16 + 16), :] += 1 / m_key_count * aux #!!!!!
 
 
         #Horizontal attention
