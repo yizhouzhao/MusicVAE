@@ -165,7 +165,7 @@ class VariationalAutoencoder(nn.Module):
                     note, decoder_hidden = self.decoder(e, decoder_hidden)
 
                     aux = self.linear(note)
-                    aux = torch.softmax(aux, dim=2)
+                    aux = torch.sigmoid(aux)
 
                     notes[:, counter, :] = aux.squeeze()
 

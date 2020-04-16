@@ -1,7 +1,7 @@
 from src.params import *
 from src.model import VariationalAutoencoder
 from src.data_utils import MidiDataset, BarTransform
-from src.loss import  ELBO_loss, ELBO_loss2
+from src.loss import  ELBO_loss, ELBO_loss2, ELBO_loss_Multi
 from src.new_model import VAECell
 
 import time
@@ -47,7 +47,11 @@ if __name__ == "__main__":
     # define our optimizer
     # The Adam optimizer works really well with VAEs.
     optimizer = optim.Adam(net.parameters(), lr=learning_rate)
-    loss_function = ELBO_loss2
+
+    if use_new_model:
+        loss_function = ELBO_loss_Multi
+    else:
+        loss_function = ELBO_loss2
 
     #Learning rate: warmup and decay
     warmup_lerp = 1/warmup_epochs
@@ -106,11 +110,15 @@ if __name__ == "__main__":
                 net.set_scheduled_sampling(eps_i)
 
             outputs = net(x)
-            x_hat = outputs['x_hat']
             mu, log_var = outputs['mu'], outputs['log_var']
 
             #elbo, kl, kl_w = loss_function(x_hat, x, mu, log_var, warmup_w, with_logits=False)
-            elbo, kl, kl_w = loss_function(x_hat, x, mu, log_var, warmup_w)
+            if use_new_model:
+                multi_notes = outputs["multi_notes"]
+                elbo, kl, kl_w = loss_function(multi_notes, x, mu, log_var, warmup_w)
+            else:
+                x_hat = outputs['x_hat']
+                elbo, kl, kl_w = loss_function(x_hat, x, mu, log_var, warmup_w)
 
             optimizer.zero_grad()
             elbo.backward()
@@ -143,13 +151,18 @@ if __name__ == "__main__":
             mu, log_var = outputs['mu'], outputs['log_var']
             z = outputs["z"]
 
-            elbo, kl, klw = loss_function(x_hat, x, mu, log_var, warmup_w)
+
+            if use_new_model:
+                multi_notes = outputs["multi_notes"]
+                elbo, kl, klw = loss_function(multi_notes, x, mu, log_var, warmup_w)
+            else:
+                elbo, kl, klw = loss_function(x_hat, x, mu, log_var, warmup_w)
 
             # We save the latent variable and reconstruction for later use
             # we will need them on the CPU to plot
-            x = x.to("cpu")
-            x_hat = x_hat.to("cpu")
-            z = z.detach().to("cpu").numpy()
+            #x = x.to("cpu")
+            #x_hat = x_hat.to("cpu")
+            #z = z.detach().to("cpu").numpy()
 
             valid_loss.append(elbo.item())
             valid_kl.append(kl.item())
@@ -165,4 +178,4 @@ if __name__ == "__main__":
         print("train_loss:", train_loss[-1], np.mean(train_loss))
         print("valid_loss:", valid_loss[-1], np.mean(valid_loss))
 
-    torch.save(net.state_dict(),'records/net_Apr_13_3th.pt')
+    torch.save(net.state_dict(),'records/net_Apr_16.pt')
