@@ -134,33 +134,50 @@ def ELBO_loss2(y, t, mu, log_var, weight, multi_notes = None):
 def ELBO_loss_Multi(multi_notes, t, mu, log_var, weight):
     # Reconstruction error, log[p(x|z)]
     # Sum over features
-    if np.random.rand() < 0.2:
-        print("ELBO_LOSS_MULTI")
-        y = multi_notes[:,0,:]
-        #print(y.shape)
-        print(torch.argmax(t, dim = -1)[0])
-        print(torch.argmax(y, dim = -1)[0])
-        ccd = torch.argmax(t, dim = -1) == torch.argmax(y, dim = -1)
-        print(torch.mean(ccd.type(torch.float)))
+    print_or_not = np.random.rand() < 0.2
 
+    t = t.view(-1, NUM_PITCHES)
+    t_index = torch.arange(t.size(0), requires_grad=False)
+    multi_notes = multi_notes.view(-1, m_key_count, NUM_PITCHES)+ 1e-6
+    key_counts = torch.sum(t, dim = -1)
+
+    if print_or_not:
+        print("ELBO_LOSS_MULTI")
+        print(torch.sum(t.view(-1, NUM_PITCHES), dim = -1)[:100])
+        print(torch.argmax(t, dim = -1)[0:100])
+        print(torch.argmax(multi_notes[:,0,:], dim = -1)[0:100])
+        print(torch.argmax(multi_notes[:,1,:], dim=-1)[0:100])
+        # ccd = torch.argmax(t, dim = -1) == torch.argmax(y, dim = -1)
+        # print(torch.mean(ccd.type(torch.float)))
+        t_hat = torch.zeros_like(t)
         if multi_notes != None:
-            g1_matrix = multi_notes[:,:,0,:]
-            g2_matrix = multi_notes[:, :, 1, :]
+            g1_matrix = multi_notes[:,0,:]
+            g2_matrix = multi_notes[:, 1, :]
             cce = torch.argmax(g1_matrix, dim = -1) == torch.argmax(g2_matrix, dim = -1)
             print("g1 g2", torch.sum((g1_matrix - g2_matrix)**2))
-            print("g1 g2 overlap rate",torch.mean(cce.type(torch.float)))
+            print("g1 g2 overlap rate",torch.sum(cce.type(torch.float))/ torch.sum(key_counts))
+
+            for j in range(m_key_count):
+                multi_notes_j = multi_notes[:, j, :]
+                max_index = torch.argmax(multi_notes_j, dim=-1)
+                t_hat[t_index, max_index] = 1
+
+            ccf = t_hat[t == 1] - t[t == 1]
+            print("t_hat t miss overlap rate: ", torch.mean(ccf.type(torch.float)**2))
 
     likelihood = 0.0
-    t = t.view(-1, NUM_PITCHES)
-    multi_notes = multi_notes.view(-1, m_key_count, NUM_PITCHES)+ 1e-6
 
+    # fill key
+    t = t.clone()
+    t[key_counts < m_key_count, 60] += m_key_count - key_counts[key_counts < m_key_count]
+
+    #print("after fill t", torch.sum(t, dim = -1)[:100])
     w = torch.sum(t, dim=0) / torch.sum(t)
     w = (-w + 1.0)**10
-
-    t_index = torch.arange(t.size(0), requires_grad=False)
-
     for j in range(m_key_count):
         multi_notes_j = multi_notes[:,j,:]
+        #if print_or_not:
+        #    print("multi_notes",j, multi_notes_j[0])
         # focal loss
         w1 = (1 - multi_notes_j) ** 2
         focal = w1 * torch.log(multi_notes_j)
@@ -171,7 +188,7 @@ def ELBO_loss_Multi(multi_notes, t, mu, log_var, weight):
 
         #print("max_index", max_index.requires_grad, max_index.shape)
         t = t.clone()
-        t[t_index, max_index] = 0
+        t[t_index, max_index] = -0.25
 
     sigma = torch.exp(log_var * 2)
     n_mu = torch.Tensor([0])
@@ -194,6 +211,10 @@ def ELBO_loss_Multi(multi_notes, t, mu, log_var, weight):
     # Combining the two terms in the evidence lower bound objective (ELBO)
     # mean over batch
     ELBO = torch.sum(likelihood) - (weight * torch.mean(kl_div))  # add a weight to the kl using warmup
+
+    # divergence_loss = 0.0
+    # if multi_notes != None:
+    #     divergence_loss +=  0.01 * torch.sum((multi_notes[:,0,:] - multi_notes[:,1,:])**2)
 
     # notice minus sign as we want to maximise ELBO
     return -ELBO, kl_div.mean(), weight * kl_div.mean()  # mean instead of sum

@@ -53,7 +53,7 @@ dropout_rate = 0.2
 TRAIN
 '''
 learning_rate = 1e-3
-num_epochs = 20
+num_epochs = 50
 warmup_epochs = 10
 pre_warmup_epochs = 10
 
@@ -63,4 +63,4 @@ NEW MODEL
 m_key_count = 2 #number of key pressed at one time
 m_key_energy_dim = 8 #structure attention
 use_new_model = True
-use_attention = True
+use_attention = False
