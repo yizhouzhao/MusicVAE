@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, random_split
 '''
 FILE INFO
 '''
-data_file = 'E:/researches/MusicVAE/training_data/piano_rolls_1.csv' #training dataset file
+data_file = 'E:/researches/MusicVAE/training_data/piano_rolls_2.csv' #training dataset file
 
 '''
 DEVICE INFO
@@ -23,7 +23,7 @@ device = torch.device("cuda" if use_cuda else "cpu") #device
 '''
 TRAINING SETTINGS
 '''
-random_seed = 42
+random_seed = 40
 test_split = .2
 shuffle = True
 
@@ -35,7 +35,7 @@ totalbars=16 #total bars as input
 NUM_PITCHES=60+1 # all possible notes to play +1 for silences
 TOTAL_NOTES=NOTESPERBAR*totalbars
 num_features=NUM_PITCHES #size of input feature vector
-batch_size = 64 #actual batchsize
+batch_size = 32 #actual batchsize
 TEACHER_FORCING=True #not used but it will be needed
 # define size variables
 input_size = NUM_PITCHES
@@ -53,13 +53,14 @@ dropout_rate = 0.2
 TRAIN
 '''
 learning_rate = 1e-3
-num_epochs = 100
-warmup_epochs = 90
+num_epochs = 50
+warmup_epochs = 10
 pre_warmup_epochs = 10
 
 '''
 NEW MODEL
 '''
-m_key_count = 2 #number of key pressed at one time
+m_key_count = 3 #number of key pressed at one time
 m_key_energy_dim = 8 #structure attention
 use_new_model = True
+use_attention = True

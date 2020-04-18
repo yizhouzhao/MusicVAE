@@ -1,4 +1,4 @@
-from params import *
+from src.params import *
 
 class VariationalAutoencoder(nn.Module):
     def __init__(self, latent_features, teacher_forcing, eps_i):
@@ -57,7 +57,7 @@ class VariationalAutoencoder(nn.Module):
         return tf
 
     def set_scheduled_sampling(self, eps_i):
-        self.eps_i = eps_i
+        self.eps_i = 1 #eps_i
 
     def forward(self, x):
         batch_size = x.size(0)
@@ -165,7 +165,7 @@ class VariationalAutoencoder(nn.Module):
                     note, decoder_hidden = self.decoder(e, decoder_hidden)
 
                     aux = self.linear(note)
-                    aux = torch.softmax(aux, dim=2)
+                    aux = torch.sigmoid(aux)
 
                     notes[:, counter, :] = aux.squeeze()
 

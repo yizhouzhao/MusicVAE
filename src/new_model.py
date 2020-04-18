@@ -1,4 +1,4 @@
-from params import *
+from src.params import *
 
 class MLP(nn.Module):
     def __init__(self,
@@ -164,7 +164,7 @@ class VAECell(nn.Module):
 
         with torch.no_grad():
             batch_size = mu_list.size(0)
-            epsilon = torch.randn(batch_size, 1, self.latent_features * m_key_count)
+            epsilon = torch.zeros(batch_size, 1, self.latent_features * m_key_count)
 
             if use_cuda:
                 epsilon = epsilon.cuda()
@@ -186,24 +186,35 @@ class VAECell(nn.Module):
             z_horizontal = z_list[:,16 * i,:,:]
             for j in range(m_key_count):
                 current_z = z_horizontal[:,j,:]
-                other_z = torch.cat((z_horizontal[:,:j,:], z_horizontal[:,(j+1):,:]),1)
-
-                #long short term memory for this key
+                # long short term memory for this key
                 current_h_conducter = hconductor[:, :, j, :].contiguous()
                 current_c_conducter = cconductor[:, :, j, :].contiguous()
                 current_h_decoder = hdecoder[:, :, j, :].contiguous()
                 current_c_decoder = cdecoder[:, :, j, :].contiguous()
+                if use_attention:
+                    other_z = torch.cat((z_horizontal[:,:j,:], z_horizontal[:,(j+1):,:]),1)
 
-                #Get simple attention
-                attn_weights = self.attn_v(current_z, other_z)
-                context = attn_weights.bmm(other_z).squeeze(1)
-                conductor_input = torch.cat((current_z, context), dim = 1)
+                    #Get simple attention
+                    attn_weights = self.attn_v(current_z, other_z)
+                    context = attn_weights.bmm(other_z).squeeze(1)
+                    conductor_input = torch.cat((current_z, context), dim = 1)
 
-                #print("conductor_input", conductor_input.shape)
-                #print("current_h", current_h.shape)
-                #print("current_c", current_c.shape)
+                    #print("conductor_input", conductor_input.shape)
+                    # print("current_h", current_h.shape)
+                    # print("current_c", current_c.shape)
 
-                embedding, (current_h, current_c) = self.conductor(conductor_input.unsqueeze(1), (current_h_conducter, current_c_conducter))
+
+                    embedding, (current_h_conducter, current_c_conducter) = self.conductor(conductor_input.unsqueeze(1),
+                                                                                           (current_h_conducter, current_c_conducter))
+
+                else:
+                    context = torch.randn((batch_size, decoders_initial_size), device = device)
+                    conductor_input = torch.cat((current_z, context), dim=1)
+
+                embedding, (current_h_conducter, current_c_conducter) = self.conductor(conductor_input.unsqueeze(1),
+                                                                                       (current_h_conducter,
+                                                                                        current_c_conducter))
+
                 embedding = embedding.expand(batch_size, NOTESPERBAR, embedding.shape[2])
 
                 decoder_input = torch.cat([embedding, the_input[:, range(i * 16, i * 16 + 16), :]], dim=-1)
@@ -212,12 +223,13 @@ class VAECell(nn.Module):
 
                 notes_cur, (current_h_decoder, current_c_decoder) = self.decoder(decoder_input, (current_h_decoder, current_c_decoder))
                 aux = self.linear(notes_cur)
+                aux = torch.softmax(aux, dim = 2)
 
                 #print("notes_cur", notes_cur.shape)
                 #print("aux", aux.shape)
 
                 multi_notes[:,range(i * 16, i * 16 + 16),j,:] = aux
-                notes[:, range(i * 16, i * 16 + 16), :] += aux
+                notes[:, range(i * 16, i * 16 + 16), :] +=   aux / m_key_count #!!!!!
 
 
         #Horizontal attention
