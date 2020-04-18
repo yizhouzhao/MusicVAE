@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, random_split
 '''
 FILE INFO
 '''
-data_file = 'E:/researches/MusicVAE/training_data/piano_rolls_1.csv' #training dataset file
+data_file = 'E:/researches/MusicVAE/training_data/piano_rolls_2.csv' #training dataset file
 
 '''
 DEVICE INFO
@@ -60,7 +60,7 @@ pre_warmup_epochs = 10
 '''
 NEW MODEL
 '''
-m_key_count = 2 #number of key pressed at one time
+m_key_count = 3 #number of key pressed at one time
 m_key_energy_dim = 8 #structure attention
 use_new_model = True
-use_attention = False
+use_attention = True
