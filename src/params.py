@@ -35,7 +35,7 @@ totalbars=16 #total bars as input
 NUM_PITCHES=60+1 # all possible notes to play +1 for silences
 TOTAL_NOTES=NOTESPERBAR*totalbars
 num_features=NUM_PITCHES #size of input feature vector
-batch_size = 32 #actual batchsize
+batch_size = 40 #actual batchsize
 TEACHER_FORCING=True #not used but it will be needed
 # define size variables
 input_size = NUM_PITCHES
@@ -60,7 +60,8 @@ pre_warmup_epochs = 10
 '''
 NEW MODEL
 '''
-m_key_count = 3 #number of key pressed at one time
-m_key_energy_dim = 8 #structure attention
+m_key_count = 2 #number of key pressed at one time
+m_key_energy_dim = 20 #structure attention energy dim
 use_new_model = True
 use_attention = True
+use_dependency_tree_vertical = True
