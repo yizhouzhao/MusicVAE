@@ -174,7 +174,7 @@ def ELBO_loss_Multi(multi_notes, t, mu, log_var, weight):
     #print("after fill t", torch.sum(t, dim = -1)[:100])
     w = torch.sum(t, dim=0) / torch.sum(t)
     w = (-w + 1.0)**10
-    for j in range(m_key_count):
+    for j in np.random.permutation(m_key_count):
         multi_notes_j = multi_notes[:,j,:]
         #if print_or_not:
         #    print("multi_notes",j, multi_notes_j[0])
@@ -188,7 +188,7 @@ def ELBO_loss_Multi(multi_notes, t, mu, log_var, weight):
 
         #print("max_index", max_index.requires_grad, max_index.shape)
         t = t.clone()
-        t[t_index, max_index] = -0.25
+        t[t_index, max_index] = -1.0 / m_key_count
 
     sigma = torch.exp(log_var * 2)
     n_mu = torch.Tensor([0])
