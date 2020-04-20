@@ -1,6 +1,6 @@
 from src.params import *
 
-from torch_struct import DependencyCRF
+from torch_struct import NonProjectiveDependencyCRF
 
 import time
 
@@ -110,8 +110,12 @@ class VAECell(nn.Module):
         self.linear_z = nn.Linear(in_features=latent_features, out_features=decoders_initial_size)
 
         #conduction to transform z
-        #decoders_initial_size + context_size(decoders_initial_size)
-        self.conductor = nn.LSTM(decoders_initial_size * 2, decoders_initial_size, num_layers=1, batch_first=True)
+        #decoders_initial_size + context_size(decoders_initial_size)\
+        if use_dependency_tree_horizontal:
+            self.conductor = nn.LSTM(decoders_initial_size * 3, decoders_initial_size, num_layers=1, batch_first=True)
+        else:
+            self.conductor = nn.LSTM(decoders_initial_size * 2, decoders_initial_size, num_layers=1, batch_first=True)
+
         self.decoder = nn.LSTM(NUM_PITCHES + decoders_initial_size, decoders_initial_size, num_layers=1,
                                batch_first=True)
 
@@ -120,19 +124,39 @@ class VAECell(nn.Module):
 
         #torch structure attention
         if use_dependency_tree_vertical:
-            self.W_1_v = torch.rand(m_key_energy_dim, decoders_initial_size, requires_grad=True, device = device)
-            self.W_2_v = torch.rand(m_key_energy_dim, decoders_initial_size, requires_grad=True, device = device)
-            self.b_v = torch.zeros(m_key_energy_dim, requires_grad=True, device = device)
-            self.s_v = torch.rand(m_key_energy_dim, requires_grad=True, device = device)
+            self.W_1_v = nn.Parameter(torch.randn(m_key_energy_dim, decoders_initial_size), requires_grad=True)
+            self.W_2_v = nn.Parameter(torch.randn(m_key_energy_dim, decoders_initial_size), requires_grad=True)
+            self.b_v = nn.Parameter(torch.zeros(m_key_energy_dim), requires_grad=True)
+            self.s_v = nn.Parameter(torch.randn(m_key_energy_dim), requires_grad=True)
+
+            # if use_cuda:
+            #     self.W_1_v = self.W_1_v.cuda()
+            #     self.W_2_v = self.W_2_v.cuda()
+            #     self.b_v = self.b_v.cuda()
+            #     self.s_v = self.s_v.cuda()
+
+        if use_dependency_tree_horizontal:
+            self.W_1_h = nn.Parameter(torch.randn(m_key_energy_dim, decoders_initial_size), requires_grad=True)
+            self.W_2_h = nn.Parameter(torch.randn(m_key_energy_dim, decoders_initial_size), requires_grad=True)
+            self.b_h = nn.Parameter(torch.zeros(m_key_energy_dim), requires_grad=True)
+            self.s_h = nn.Parameter(torch.randn(m_key_energy_dim), requires_grad=True)
 
     # used to modify the parameter for dependency for every batch
-    def modify_weight_and_bias(self, batch_size):
+    def modify_weight_and_bias_vertical(self, batch_size):
         w_1_v = self.W_1_v.unsqueeze(0).expand(batch_size, m_key_energy_dim, decoders_initial_size)
         w_2_v = self.W_2_v.unsqueeze(0).expand(batch_size, m_key_energy_dim, decoders_initial_size)
         b_v = self.b_v.unsqueeze(1).unsqueeze(0).expand(batch_size, m_key_energy_dim, m_key_count)
         s_v = self.s_v.unsqueeze(0).unsqueeze(0).expand(batch_size, 1, m_key_energy_dim)
 
         return w_1_v, w_2_v, b_v, s_v
+
+    def modify_weight_and_bias_horizontal(self, batch_size):
+        w_1_h = self.W_1_h.unsqueeze(0).expand(batch_size, m_key_energy_dim, decoders_initial_size)
+        w_2_h = self.W_2_h.unsqueeze(0).expand(batch_size, m_key_energy_dim, decoders_initial_size)
+        b_h = self.b_h.unsqueeze(1).unsqueeze(0).expand(batch_size,  m_key_energy_dim, m_key_count * totalbars)
+        s_h = self.s_h.unsqueeze(0).unsqueeze(0).expand(batch_size, 1, m_key_energy_dim)
+
+        return  w_1_h, w_2_h, b_h, s_h
 
     # used to initialize the hidden layer of the encoder to zero before every batch
     def init_hidden(self, batch_size):
@@ -170,7 +194,10 @@ class VAECell(nn.Module):
 
         # create weights for structure attention
         if use_dependency_tree_vertical:
-           w_1_v, w_2_v, b_v, s_v  = self.modify_weight_and_bias(batch_size)
+           w_1_v, w_2_v, b_v, s_v  = self.modify_weight_and_bias_vertical(batch_size)
+
+        if use_dependency_tree_horizontal:
+            w_1_h, w_2_h, b_h, s_h = self.modify_weight_and_bias_horizontal(batch_size)
 
         # resets encoder at the beginning of every batch and gives it x
         x, hidden = self.encoder(x, (h0, c0))
@@ -203,15 +230,72 @@ class VAECell(nn.Module):
         z_list = z.view(batch_size, note_length, m_key_count, -1)
         z_list = self.linear_z(z_list)
 
-        #print("z_list", z_list.shape)
+        #print("z_list", z_list.shape, NOTESPERBAR, note_length // NOTESPERBAR)
+
+        if use_dependency_tree_horizontal:
+            z_horizontal_bars = z_list[:, range(0, note_length, NOTESPERBAR), :, :]
+            '''
+            Replace for loop to get log potentials
+            '''
+            z_horizontal_bars_reshaped = z_horizontal_bars.view(batch_size, -1, decoders_initial_size)
+            z_horizontal_bars_reshaped = z_horizontal_bars_reshaped.transpose(1, 2)
+            w1_times_hi = torch.bmm(w_1_h, z_horizontal_bars_reshaped) #batch x dim x (bars * keys)
+            w1_times_hi = w1_times_hi + b_h
+            w2_times_hj = torch.bmm(w_2_h, z_horizontal_bars_reshaped)  # batch x dim x (bars * keys)
+
+            #reshape
+            w1_times_hi = w1_times_hi.view(batch_size, m_key_energy_dim, m_key_count, totalbars)
+            w2_times_hj = w2_times_hj.view(batch_size, m_key_energy_dim, m_key_count, totalbars)
+
+            #print("w1_times_hi", w1_times_hi.shape)
+
+            #expand
+            w1_times_hi = w1_times_hi.unsqueeze(-1).expand(batch_size, m_key_energy_dim, m_key_count, totalbars, totalbars)
+            w2_times_hj = w2_times_hj.unsqueeze(-2).expand(batch_size, m_key_energy_dim, m_key_count, totalbars, totalbars)
+
+            #plus
+            w1_plus_w2 = torch.tanh(w1_times_hi + w2_times_hj)
+
+            w1_plus_w2 = w1_plus_w2.view(batch_size, m_key_energy_dim, -1)
+
+            #log potential
+            log_potentials_h = torch.tanh(torch.bmm(s_h, w1_plus_w2)).squeeze(1).view(batch_size, m_key_count, totalbars, totalbars)
+
+
+            #print("log_potentials_h", log_potentials_h.shape)
+
+            # log_potentials_h = torch.zeros(batch_size, m_key_count, totalbars, totalbars, device = device)
+            #
+            # for j in range(m_key_count):
+            #     print(j)
+            #     z_horizontal_bars_j = z_horizontal_bars[:,:,j,:]
+            #     for b in range(batch_size):
+            #         for i_h in range(totalbars):
+            #             h_i = z_horizontal_bars_j[b, i_h, :]
+            #             for j_h in range(totalbars):
+            #                 h_j = z_horizontal_bars_j[b, j_h, :]
+            #                 # print("h_i",h_i.shape)
+            #                 # print("h_j", h_j.shape)
+            #                 # print("self.W_1_h", self.W_1_h.shape)
+            #                 # print("self.W_2_h", self.W_2_h.shape)
+            #                 # print("self.b_h", self.b_h.shape)
+            #                 temp = torch.tanh(self.W_1_h.matmul(h_i) + self.W_2_h.matmul(h_j) + self.b_h)
+            #                 log_potentials_h[b, j, i_h, j_h] = torch.tanh(
+            #                                     torch.dot(self.s_h,
+            #                                               temp
+            #                                               )
+            #                                 )
+
+
+            # print("z_horizontal_bars_j", z_horizontal_bars_j.shape)
+            # print("log_potentials_h", log_potentials_h[0,0])
+            # exit()
 
         #Vertial attention
         for i in range(note_length // NOTESPERBAR):
-            z_horizontal = z_list[:,16 * i,:,:]
+            z_horizontal = z_list[:,NOTESPERBAR * i,:,:]
 
             if use_dependency_tree_vertical:
-
-
                 '''
                 Substitude for loop for get lop potentials
                 '''
@@ -227,8 +311,7 @@ class VAECell(nn.Module):
 
                 w1_plus_w2 = torch.tanh(w1_times_hi + w2_times_hj)
                 w1_plus_w2 = w1_plus_w2.view(batch_size, m_key_energy_dim, m_key_count * m_key_count)
-                log_potentials = torch.tanh(torch.bmm(s_v, w1_plus_w2).squeeze(1).view(batch_size, m_key_count, m_key_count))
-
+                log_potentials_v = torch.tanh(torch.bmm(s_v, w1_plus_w2).squeeze(1).view(batch_size, m_key_count, m_key_count))
                 # end_time  = int(round(time.time() * 1000))
                 #
                 # print("begin time", begin_time)
@@ -260,7 +343,14 @@ class VAECell(nn.Module):
                 # print(log_potentials)
                 # exit()
 
-                dist = DependencyCRF(log_potentials)
+                dist_v = NonProjectiveDependencyCRF(log_potentials_v)
+
+                if np.random.rand() < 0.02:
+                    print("z_horizontal", z_horizontal[0])
+                    print("w1, w2 ", self.W_1_v[0, :10], self.W_2_v[0, :10])
+                    print("b_v, s_v", self.b_v, self.s_v)
+                    print("log potentials vertiacal", log_potentials_v[0])
+                    print("dist",dist_v.marginals[0])
 
                 for j in range(m_key_count):
                     current_z = z_horizontal[:, j, :]
@@ -268,18 +358,33 @@ class VAECell(nn.Module):
                     current_c_conducter = cconductor[:, :, j, :].contiguous()
                     current_h_decoder = hdecoder[:, :, j, :].contiguous()
                     current_c_decoder = cdecoder[:, :, j, :].contiguous()
-                    context = dist.marginals[:, :, j].unsqueeze(1).bmm(
+                    context_v = dist_v.marginals[:, :, j].unsqueeze(1).bmm(
                                   z_horizontal).squeeze(1)
 
-                    conductor_input = torch.cat((current_z, context), dim=1)
+                    if use_dependency_tree_horizontal:
+                        z_horizontal_bars_j = z_horizontal_bars[:,:,j,:]
+                        dist_h = NonProjectiveDependencyCRF(log_potentials_h[:,j,:,:].contiguous())
+                        context_h = dist_h.marginals[:, :, i].unsqueeze(1).bmm(z_horizontal_bars_j).squeeze(1)
+                        #print("z_horizontal_bars_j", z_horizontal_bars_j.shape)
+                        #print("context_h", context_h.shape)
+
+                        conductor_input = torch.cat((current_z, context_h, context_v), dim=1)
+
+                    else:
+                        conductor_input = torch.cat((current_z, context_v), dim=1)
+
+                    #print("context_v", context_v.shape)
+                    #print("conductor_input", conductor_input.shape)
+
                     embedding, (current_h_conducter, current_c_conducter) = self.conductor(conductor_input.unsqueeze(1),
                         (current_h_conducter,current_c_conducter))
 
                     embedding = embedding.expand(batch_size, NOTESPERBAR, embedding.shape[2])
 
                     decoder_input = torch.cat([embedding, the_input[:, range(i * 16, i * 16 + 16), :]], dim=-1)
-                    # print("embedding", embedding.shape)
-                    # print("the_input[:, i, :]]", the_input.shape)
+                    #print("embedding", embedding.shape)
+                    #print("the_input[:, i, :]]", the_input.shape)
+                    #exit()
 
                     notes_cur, (current_h_decoder, current_c_decoder) = self.decoder(decoder_input, (
                         current_h_decoder, current_c_decoder))
@@ -291,6 +396,8 @@ class VAECell(nn.Module):
 
                     multi_notes[:, range(i * 16, i * 16 + 16), j, :] = aux
                     #notes[:, range(i * 16, i * 16 + 16), :] += aux / m_key_count  # !!!!!
+
+
 
             else: # use normal attention
                 for j in range(m_key_count):

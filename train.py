@@ -4,13 +4,31 @@ from src.data_utils import MidiDataset, BarTransform
 from src.loss import  ELBO_loss, ELBO_loss2, ELBO_loss_Multi
 from src.new_model import VAECell
 
+from torch.utils.tensorboard import SummaryWriter
+
 import time
+from datetime import datetime
+
 import os
 import math
 
 from torch.autograd import Variable #deprecated!!!
 
 if __name__ == "__main__":
+    now = datetime.now()
+    date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
+    print("date and time:", date_time)
+
+    writer = SummaryWriter("runs/" + date_time)
+
+    params_dict = {"NOTESPERBAR":NOTESPERBAR, "totalbars":totalbars, "NUM_PITCHES" : NUM_PITCHES,
+                   "batch_size":batch_size, "learning_rate":learning_rate, "num_epochs":num_epochs,
+                   "m_key_count":m_key_count, "use_new_model":use_new_model, "use_attention":use_attention,
+                   "use_dependency_tree_vertical":use_dependency_tree_vertical, "use_dependency_tree_horizontal":use_dependency_tree_horizontal
+                   }
+
+    writer.add_hparams(params_dict)
+
     #cut the music piece into several bars, each bar comtains equal number of note sequences
     transform = BarTransform(bars=totalbars, note_count=NUM_PITCHES)#configures number of input bars
 
@@ -127,9 +145,12 @@ if __name__ == "__main__":
             batch_loss.append(elbo.item())
             batch_kl.append(kl.item())
             batch_klw.append(kl_w.item())
+
         train_loss.append(np.mean(batch_loss))
         train_kl.append(np.mean(batch_kl))
         train_klw.append(np.mean(batch_klw))
+
+
 
         # Evaluate, do not propagate gradients
         with torch.no_grad():
@@ -178,4 +199,4 @@ if __name__ == "__main__":
         print("train_loss:", train_loss[-1], np.mean(train_loss))
         print("valid_loss:", valid_loss[-1], np.mean(valid_loss))
 
-    torch.save(net.state_dict(),'records/net_Apr_18_2_chord.pt')
+    torch.save(net.state_dict(),'records/net_Apr_20_5_h_v_chord.pt')
