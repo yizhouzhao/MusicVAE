@@ -345,12 +345,12 @@ class VAECell(nn.Module):
 
                 dist_v = NonProjectiveDependencyCRF(log_potentials_v)
 
-                if np.random.rand() < 0.02:
-                    print("z_horizontal", z_horizontal[0])
-                    print("w1, w2 ", self.W_1_v[0, :10], self.W_2_v[0, :10])
-                    print("b_v, s_v", self.b_v, self.s_v)
-                    print("log potentials vertiacal", log_potentials_v[0])
-                    print("dist",dist_v.marginals[0])
+                # if np.random.rand() < 0.005:
+                #     print("z_horizontal", z_horizontal[0])
+                #     print("w1, w2 ", self.W_1_v[0, :10], self.W_2_v[0, :10])
+                #     print("b_v, s_v", self.b_v, self.s_v)
+                #     print("log potentials vertiacal", log_potentials_v[0])
+                #     print("dist",dist_v.marginals[0])
 
                 for j in range(m_key_count):
                     current_z = z_horizontal[:, j, :]
@@ -366,7 +366,10 @@ class VAECell(nn.Module):
                         dist_h = NonProjectiveDependencyCRF(log_potentials_h[:,j,:,:].contiguous())
                         context_h = dist_h.marginals[:, :, i].unsqueeze(1).bmm(z_horizontal_bars_j).squeeze(1)
                         #print("z_horizontal_bars_j", z_horizontal_bars_j.shape)
-                        #print("context_h", context_h.shape)
+                        # if np.random.rand() < 0.05:
+                        #     print("log potentials horizontal", log_potentials_h[0,j])
+
+
 
                         conductor_input = torch.cat((current_z, context_h, context_v), dim=1)
 

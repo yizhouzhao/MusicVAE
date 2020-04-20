@@ -5,7 +5,7 @@ from torch.distributions.normal import Normal
 from torch.distributions.kl import kl_divergence
 import numpy as np
 
-from params import use_cuda, NUM_PITCHES, m_key_count
+from params import use_cuda, NUM_PITCHES, m_key_count, use_permutation_loss
 
 
 def ELBO_loss(y, t, mu, log_var, weight, with_logits = False):
@@ -57,7 +57,7 @@ def ELBO_loss(y, t, mu, log_var, weight, with_logits = False):
 def ELBO_loss2(y, t, mu, log_var, weight, multi_notes = None):
     # Reconstruction error, log[p(x|z)]
     # Sum over features
-    if np.random.rand() < 0.2:
+    if np.random.rand() < 0:
         print("ELBO_LOSS2")
         print(y.shape)
         print(torch.argmax(t, dim = -1)[0])
@@ -134,7 +134,7 @@ def ELBO_loss2(y, t, mu, log_var, weight, multi_notes = None):
 def ELBO_loss_Multi(multi_notes, t, mu, log_var, weight):
     # Reconstruction error, log[p(x|z)]
     # Sum over features
-    print_or_not = np.random.rand() < 0.2
+    print_or_not = False #np.random.rand() < 0.2
 
     t = t.view(-1, NUM_PITCHES)
     t_index = torch.arange(t.size(0), requires_grad=False)
@@ -165,6 +165,9 @@ def ELBO_loss_Multi(multi_notes, t, mu, log_var, weight):
             ccf = t_hat[t == 1] - t[t == 1]
             print("t_hat t miss overlap rate: ", torch.mean(ccf.type(torch.float)**2))
 
+            ccg = t_hat[t == 1]
+            print("t_hat covering rate: ", torch.mean(ccg))
+
     likelihood = 0.0
 
     # fill key
@@ -174,7 +177,10 @@ def ELBO_loss_Multi(multi_notes, t, mu, log_var, weight):
     #print("after fill t", torch.sum(t, dim = -1)[:100])
     w = torch.sum(t, dim=0) / torch.sum(t)
     w = (-w + 1.0)**10
-    for j in np.random.permutation(m_key_count):
+
+    key_range_list = np.random.permutation(m_key_count) if use_permutation_loss else np.arange(m_key_count)
+
+    for j in key_range_list:
         multi_notes_j = multi_notes[:,j,:]
         #if print_or_not:
         #    print("multi_notes",j, multi_notes_j[0])
