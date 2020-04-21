@@ -53,10 +53,10 @@ dropout_rate = 0.2
 TRAIN
 '''
 learning_rate = 1e-3
-num_epochs = 100
+num_epochs = 20
 warmup_epochs = 10
 pre_warmup_epochs = 10
-
+log_frequency = 5
 '''
 NEW MODEL
 '''
@@ -66,3 +66,4 @@ use_new_model = True
 use_attention = True
 use_dependency_tree_vertical = True
 use_dependency_tree_horizontal = True
+use_permutation_loss = False

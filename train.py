@@ -16,7 +16,7 @@ from torch.autograd import Variable #deprecated!!!
 
 if __name__ == "__main__":
     now = datetime.now()
-    date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
+    date_time = now.strftime("%Y_%m_%d_%H_%M_%S")
     print("date and time:", date_time)
 
     writer = SummaryWriter("runs/" + date_time)
@@ -24,10 +24,11 @@ if __name__ == "__main__":
     params_dict = {"NOTESPERBAR":NOTESPERBAR, "totalbars":totalbars, "NUM_PITCHES" : NUM_PITCHES,
                    "batch_size":batch_size, "learning_rate":learning_rate, "num_epochs":num_epochs,
                    "m_key_count":m_key_count, "use_new_model":use_new_model, "use_attention":use_attention,
-                   "use_dependency_tree_vertical":use_dependency_tree_vertical, "use_dependency_tree_horizontal":use_dependency_tree_horizontal
+                   "use_dependency_tree_vertical":use_dependency_tree_vertical, "use_dependency_tree_horizontal":use_dependency_tree_horizontal,
+                   "use_permutation_loss":use_permutation_loss
                    }
 
-    writer.add_hparams(params_dict)
+    writer.add_hparams(params_dict, {})
 
     #cut the music piece into several bars, each bar comtains equal number of note sequences
     transform = BarTransform(bars=totalbars, note_count=NUM_PITCHES)#configures number of input bars
@@ -101,6 +102,12 @@ if __name__ == "__main__":
         batch_loss, batch_kl, batch_klw = [], [], []
         net.train()
 
+        running_loss = 0.0
+        kl_loss = 0.0
+        tpr = 0.0
+        tnr = 0.0
+        ppv = 0.0
+        npv = 0.0
         for i_batch, sample_batched in enumerate(train_loader):
             if i_batch % 5 == 0:
                 print("i_batch", i_batch)
@@ -146,11 +153,70 @@ if __name__ == "__main__":
             batch_kl.append(kl.item())
             batch_klw.append(kl_w.item())
 
+            #loss
+            running_loss += elbo.item()
+            kl_loss += kl.item()
+            if i_batch % log_frequency == log_frequency - 1:
+                # ...log the running loss
+                writer.add_scalar('ELBO loss',
+                                  running_loss / log_frequency,
+                                  epoch * len(train_loader) + i_batch)
+                writer.add_scalar('KL loss',
+                                  kl_loss / log_frequency,
+                                  epoch * len(train_loader) + i_batch)
+                running_loss = 0.0
+                kl_loss = 0.0
+
+                writer.add_scalar('TPR',
+                                  tpr / log_frequency,
+                                  epoch * len(train_loader) + i_batch)
+                tpr = 0.0
+                writer.add_scalar('TNR',
+                                  tnr / log_frequency,
+                                  epoch * len(train_loader) + i_batch)
+                tnr = 0.0
+                writer.add_scalar('PPV',
+                                  ppv / log_frequency,
+                                  epoch * len(train_loader) + i_batch)
+                ppv = 0.0
+                writer.add_scalar('NPV',
+                                  npv / log_frequency,
+                                  epoch * len(train_loader) + i_batch)
+                npv = 0.0
+
+            x_real = x.view(-1, NUM_PITCHES)
+            x_index = torch.arange(x_real.size(0), requires_grad=False)
+            x_hat = torch.zeros_like(x_real)
+            if use_new_model:
+                multi_notes = outputs["multi_notes"]
+                multi_notes = multi_notes.view(-1, m_key_count, NUM_PITCHES) + 1e-6
+
+                for j in range(m_key_count):
+                    multi_notes_j = multi_notes[:, j, :]
+                    max_index = torch.argmax(multi_notes_j, dim=-1)
+                    x_hat[x_index, max_index] = 1
+
+            else:
+                notes = outputs['x_hat']
+                notes = notes.view(-1, NUM_PITCHES) + 1e-6
+
+                max_index = torch.argmax(notes, dim=-1)
+                x_hat[x_index, max_index] = 1
+
+            tpr += torch.mean(x_hat[x_real == 1]).item()  # true positive rate
+            tnr += (1 - torch.mean(x_hat[x_real == 0]).item())  # true negative rate
+            ppv += torch.mean(x_real[x_hat == 1]).item()  # postive predictive rate
+            npv += (1 - torch.mean(x_real[x_hat == 0]).item())  # negative predictive rate
+
+            # print("what is wrong with: ")
+            # print(torch.mean(x_hat[x_real == 1]).item())
+            # print(torch.mean(x_hat[x_real == 0]).item())
+            # print(torch.mean(x_real[x_hat == 1]).item())
+            # print(torch.mean(x_real[x_hat == 0]).item())
+
         train_loss.append(np.mean(batch_loss))
         train_kl.append(np.mean(batch_kl))
         train_klw.append(np.mean(batch_klw))
-
-
 
         # Evaluate, do not propagate gradients
         with torch.no_grad():
@@ -199,4 +265,5 @@ if __name__ == "__main__":
         print("train_loss:", train_loss[-1], np.mean(train_loss))
         print("valid_loss:", valid_loss[-1], np.mean(valid_loss))
 
-    torch.save(net.state_dict(),'records/net_Apr_20_5_h_v_chord.pt')
+    torch.save(net.state_dict(),"records/" + date_time + ".pt")
+    writer.close()
