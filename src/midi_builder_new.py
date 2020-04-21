@@ -43,7 +43,7 @@ class MidiBuilderNew():
                 # Check if the note is activated at this timestep
                 if piano_roll.iloc[idx][note_name] == 1.: 
                     idx_start = idx
-                    while idx is not max(piano_roll.index) and piano_roll.iloc[idx + 1][note_name] == 1.:
+                    while idx < max(piano_roll.index) and piano_roll.iloc[idx + 1][note_name] == 1.:
                         idx += 1
                     # Retrieve the MIDI note number for this note name
                     note_number = pretty_midi.note_name_to_number(note_name)
@@ -71,6 +71,6 @@ class MidiBuilderNew():
         
     def play_midi(self, midi_sample):
         fs = 44100
-        synth = midi_sample.synthesize(fs=fs)
+        synth = midi_sample.fluidsynth(fs=fs)
         return [synth], fs
 
