@@ -1,3 +1,6 @@
+# Paper
+https://www.overleaf.com/read/xgzwpjjpynyj
+
 # MusicVAE
 
 https://magenta.tensorflow.org/music-vae
