@@ -2,4 +2,4 @@ numpy
 pandas
 music21
 pretty_midi
-torch_struct
+git+https://github.com/harvardnlp/pytorch-struct

@@ -5,7 +5,7 @@ from torch.distributions.normal import Normal
 from torch.distributions.kl import kl_divergence
 import numpy as np
 
-from params import use_cuda, NUM_PITCHES, m_key_count, use_permutation_loss
+from src.params import use_cuda, NUM_PITCHES, m_key_count, use_permutation_loss
 
 
 def ELBO_loss(y, t, mu, log_var, weight, with_logits = False):
