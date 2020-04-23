@@ -1,7 +1,7 @@
 from src.params import *
 from src.model import VariationalAutoencoder
 from src.data_utils import MidiDataset, BarTransform
-from src.loss import  ELBO_loss, ELBO_loss2, ELBO_loss_Multi
+from src.loss import ELBO_loss, ELBO_loss2, ELBO_loss_Multi
 from src.new_model import VAECell
 
 from torch.utils.tensorboard import SummaryWriter
@@ -12,7 +12,7 @@ from datetime import datetime
 import os
 import math
 
-from torch.autograd import Variable #deprecated!!!
+from torch.autograd import Variable  #deprecated!!!
 
 if __name__ == "__main__":
     now = datetime.now()
@@ -21,42 +21,62 @@ if __name__ == "__main__":
 
     writer = SummaryWriter("runs/" + date_time)
 
-    params_dict = {"NOTESPERBAR":NOTESPERBAR, "totalbars":totalbars, "NUM_PITCHES" : NUM_PITCHES,
-                   "batch_size":batch_size, "learning_rate":learning_rate, "num_epochs":num_epochs,
-                   "m_key_count":m_key_count, "use_new_model":use_new_model, "use_attention":use_attention,
-                   "use_dependency_tree_vertical":use_dependency_tree_vertical, "use_dependency_tree_horizontal":use_dependency_tree_horizontal,
-                   "use_permutation_loss":use_permutation_loss
-                   }
+    params_dict = {
+        "NOTESPERBAR": NOTESPERBAR,
+        "totalbars": totalbars,
+        "NUM_PITCHES": NUM_PITCHES,
+        "batch_size": batch_size,
+        "learning_rate": learning_rate,
+        "num_epochs": num_epochs,
+        "m_key_count": m_key_count,
+        "use_new_model": use_new_model,
+        "use_attention": use_attention,
+        "use_dependency_tree_vertical": use_dependency_tree_vertical,
+        "use_dependency_tree_horizontal": use_dependency_tree_horizontal,
+        "use_permutation_loss": use_permutation_loss
+    }
 
     writer.add_hparams(params_dict, {})
 
     #cut the music piece into several bars, each bar comtains equal number of note sequences
-    transform = BarTransform(bars=totalbars, note_count=NUM_PITCHES)#configures number of input bars
+    transform = BarTransform(
+        bars=totalbars,
+        note_count=NUM_PITCHES)  #configures number of input bars
 
     #Load dataset
-    midi_dataset = MidiDataset(csv_file=data_file, transform = transform) #imports dataset
-    print("Train.py Memory Usage for Training Data: ", midi_dataset.get_mem_usage(),"MB")
+    midi_dataset = MidiDataset(csv_file=data_file,
+                               transform=transform)  #imports dataset
+    print("Train.py Memory Usage for Training Data: ",
+          midi_dataset.get_mem_usage(), "MB")
 
     #Set random seed
     if random_seed is not None:
         np.random.seed(random_seed)
 
-    dataset_size = len(midi_dataset)           #number of musics on dataset
-    test_size = int(test_split * dataset_size) #test size length
-    train_size = dataset_size - test_size      #train data length
+    dataset_size = len(midi_dataset)  #number of musics on dataset
+    test_size = int(test_split * dataset_size)  #test size length
+    train_size = dataset_size - test_size  #train data length
 
     #Split dataset into training/testing
-    train_dataset, test_dataset = random_split(midi_dataset, [train_size, test_size])
-    train_loader = DataLoader(train_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=1)#, sampler=train_sampler)
-    test_loader = DataLoader(test_dataset, shuffle=shuffle, batch_size=batch_size, num_workers=1)#, sampler=test_sampler)
+    train_dataset, test_dataset = random_split(midi_dataset,
+                                               [train_size, test_size])
+    train_loader = DataLoader(train_dataset,
+                              shuffle=shuffle,
+                              batch_size=batch_size,
+                              num_workers=1)  #, sampler=train_sampler)
+    test_loader = DataLoader(test_dataset,
+                             shuffle=shuffle,
+                             batch_size=batch_size,
+                             num_workers=1)  #, sampler=test_sampler)
 
-    print("Train.py Train size: {}, Test size: {}".format(train_size, test_size))
+    print("Train.py Train size: {}, Test size: {}".format(
+        train_size, test_size))
 
     #Model
     if use_new_model:
         net = VAECell(latent_features)
     else:
-        net = VariationalAutoencoder(latent_features, TEACHER_FORCING, eps_i = 1)
+        net = VariationalAutoencoder(latent_features, TEACHER_FORCING, eps_i=1)
 
     if use_cuda:
         net = net.cuda()
@@ -73,26 +93,26 @@ if __name__ == "__main__":
         loss_function = ELBO_loss2
 
     #Learning rate: warmup and decay
-    warmup_lerp = 1/warmup_epochs
+    warmup_lerp = 1 / warmup_epochs
 
     if warmup_epochs > num_epochs - pre_warmup_epochs:
-        warmup_epochs=num_epochs - pre_warmup_epochs
+        warmup_epochs = num_epochs - pre_warmup_epochs
 
-    warmup_w=0
+    warmup_w = 0
 
     scheduled_decay_rate = 40
 
     def lin_decay(i, mineps=0):
-        return np.max([mineps, 1 - (1/len(train_loader))*i])
+        return np.max([mineps, 1 - (1 / len(train_loader)) * i])
 
     def inv_sigmoid_decay(i, rate=40):
-        return rate/(rate + np.exp(i/rate))
+        return rate / (rate + np.exp(i / rate))
 
     eps_i = 1
     use_scheduled_sampling = False
 
     train_loss, valid_loss = [], []
-    train_kl, valid_kl,train_klw = [], [],[]
+    train_kl, valid_kl, train_klw = [], [], []
 
     start = time.time()
 
@@ -140,7 +160,8 @@ if __name__ == "__main__":
             #elbo, kl, kl_w = loss_function(x_hat, x, mu, log_var, warmup_w, with_logits=False)
             if use_new_model:
                 multi_notes = outputs["multi_notes"]
-                elbo, kl, kl_w = loss_function(multi_notes, x, mu, log_var, warmup_w)
+                elbo, kl, kl_w = loss_function(multi_notes, x, mu, log_var,
+                                               warmup_w)
             else:
                 x_hat = outputs['x_hat']
                 elbo, kl, kl_w = loss_function(x_hat, x, mu, log_var, warmup_w)
@@ -158,29 +179,23 @@ if __name__ == "__main__":
             kl_loss += kl.item()
             if i_batch % log_frequency == log_frequency - 1:
                 # ...log the running loss
-                writer.add_scalar('ELBO loss',
-                                  running_loss / log_frequency,
+                writer.add_scalar('ELBO loss', running_loss / log_frequency,
                                   epoch * len(train_loader) + i_batch)
-                writer.add_scalar('KL loss',
-                                  kl_loss / log_frequency,
+                writer.add_scalar('KL loss', kl_loss / log_frequency,
                                   epoch * len(train_loader) + i_batch)
                 running_loss = 0.0
                 kl_loss = 0.0
 
-                writer.add_scalar('TPR',
-                                  tpr / log_frequency,
+                writer.add_scalar('TPR', tpr / log_frequency,
                                   epoch * len(train_loader) + i_batch)
                 tpr = 0.0
-                writer.add_scalar('TNR',
-                                  tnr / log_frequency,
+                writer.add_scalar('TNR', tnr / log_frequency,
                                   epoch * len(train_loader) + i_batch)
                 tnr = 0.0
-                writer.add_scalar('PPV',
-                                  ppv / log_frequency,
+                writer.add_scalar('PPV', ppv / log_frequency,
                                   epoch * len(train_loader) + i_batch)
                 ppv = 0.0
-                writer.add_scalar('NPV',
-                                  npv / log_frequency,
+                writer.add_scalar('NPV', npv / log_frequency,
                                   epoch * len(train_loader) + i_batch)
                 npv = 0.0
 
@@ -189,7 +204,8 @@ if __name__ == "__main__":
             x_hat = torch.zeros_like(x_real)
             if use_new_model:
                 multi_notes = outputs["multi_notes"]
-                multi_notes = multi_notes.view(-1, m_key_count, NUM_PITCHES) + 1e-6
+                multi_notes = multi_notes.view(-1, m_key_count,
+                                               NUM_PITCHES) + 1e-6
 
                 for j in range(m_key_count):
                     multi_notes_j = multi_notes[:, j, :]
@@ -204,9 +220,12 @@ if __name__ == "__main__":
                 x_hat[x_index, max_index] = 1
 
             tpr += torch.mean(x_hat[x_real == 1]).item()  # true positive rate
-            tnr += (1 - torch.mean(x_hat[x_real == 0]).item())  # true negative rate
-            ppv += torch.mean(x_real[x_hat == 1]).item()  # postive predictive rate
-            npv += (1 - torch.mean(x_real[x_hat == 0]).item())  # negative predictive rate
+            tnr += (1 - torch.mean(x_hat[x_real == 0]).item()
+                    )  # true negative rate
+            ppv += torch.mean(
+                x_real[x_hat == 1]).item()  # postive predictive rate
+            npv += (1 - torch.mean(x_real[x_hat == 0]).item()
+                    )  # negative predictive rate
 
             # print("what is wrong with: ")
             # print(torch.mean(x_hat[x_real == 1]).item())
@@ -238,10 +257,10 @@ if __name__ == "__main__":
             mu, log_var = outputs['mu'], outputs['log_var']
             z = outputs["z"]
 
-
             if use_new_model:
                 multi_notes = outputs["multi_notes"]
-                elbo, kl, klw = loss_function(multi_notes, x, mu, log_var, warmup_w)
+                elbo, kl, klw = loss_function(multi_notes, x, mu, log_var,
+                                              warmup_w)
             else:
                 elbo, kl, klw = loss_function(x_hat, x, mu, log_var, warmup_w)
 
@@ -265,5 +284,5 @@ if __name__ == "__main__":
         print("train_loss:", train_loss[-1], np.mean(train_loss))
         print("valid_loss:", valid_loss[-1], np.mean(valid_loss))
 
-    torch.save(net.state_dict(),"records/" + date_time + ".pt")
+    torch.save(net.state_dict(), "records/" + date_time + ".pt")
     writer.close()
