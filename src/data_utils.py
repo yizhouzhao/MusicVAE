@@ -3,6 +3,7 @@ import numpy as np
 import pretty_midi
 import music21
 
+
 def encode_dummies(instrument, sampling_freq):
     """ Gonna cheat a little bit by transposing the instrument piano roll.
         However, that leaves us with a lot of blank space.
@@ -12,6 +13,7 @@ def encode_dummies(instrument, sampling_freq):
     note_columns = [pretty_midi.note_number_to_name(n) for n in range(0, 128)]
     pr = instrument.get_piano_roll(fs=sampling_freq).astype('uint8').T
     return pd.DataFrame(pr, columns=note_columns)
+
 
 def trim_blanks(df):
     """
@@ -32,14 +34,20 @@ def chopster(dframe):
     # Figure out range of frame (0-128)
     df_max = dframe.max(axis=0)
 
-    dframe.drop(labels=[pretty_midi.note_number_to_name(n) for n in range(108, 128)], axis=1, inplace=True)
-    dframe.drop(labels=[pretty_midi.note_number_to_name(n) for n in range(0, 48)], axis=1, inplace=True)
+    dframe.drop(
+        labels=[pretty_midi.note_number_to_name(n) for n in range(108, 128)],
+        axis=1,
+        inplace=True)
+    dframe.drop(
+        labels=[pretty_midi.note_number_to_name(n) for n in range(0, 48)],
+        axis=1,
+        inplace=True)
     return dframe
 
 
 # Non-zero values changed to 1's
 def minister(dframe):
-    return dframe.where(dframe<1, 1)
+    return dframe.where(dframe < 1, 1)
 
 
 # DISCLAIMER:
@@ -47,21 +55,28 @@ def minister(dframe):
 # http://nickkellyresearch.com/python-script-transpose-midi-files-c-minor/
 # Transpose MIDI to same key (C major or A minor)
 
+
 def transposer(midi_file):
     midi_array = midi_file.split('/')
 
     # converting everything into the key of C major or A minor
     # Major conversion
-    majors = dict([("A-", 4),("G#", 4),("A", 3),("A#", 2),("B-", 2),("B", 1),("C", 0),("C#", -1),("D-", -1),("D", -2),("D#", -3),("E-", -3),("E", -4),("F", -5),("F#", 6),("G-", 6),("G", 5)])
+    majors = dict([("A-", 4), ("G#", 4), ("A", 3), ("A#", 2), ("B-", 2),
+                   ("B", 1), ("C", 0), ("C#", -1), ("D-", -1), ("D", -2),
+                   ("D#", -3), ("E-", -3), ("E", -4), ("F", -5), ("F#", 6),
+                   ("G-", 6), ("G", 5)])
     # Minor conversion
-    minors = dict([("G#", 1), ("A-", 1),("A", 0),("A#", -1),("B-", -1),("B", -2),("C", -3),("C#", -4),("D-", -4),("D", -5),("D#", 6),("E-", 6),("E", 5),("F", 4),("F#", 3),("G-", 3),("G", 2)])
+    minors = dict([("G#", 1), ("A-", 1), ("A", 0), ("A#", -1), ("B-", -1),
+                   ("B", -2), ("C", -3), ("C#", -4), ("D-", -4), ("D", -5),
+                   ("D#", 6), ("E-", 6), ("E", 5), ("F", 4), ("F#", 3),
+                   ("G-", 3), ("G", 2)])
 
     score = music21.converter.parse(midi_file)
     key = score.analyze('key')
     if key.mode == "major":
         halfSteps = majors[key.tonic.name]
 
-    else: # key.mode == "minor":
+    else:  # key.mode == "minor":
         halfSteps = minors[key.tonic.name]
 
     return halfSteps
@@ -69,9 +84,9 @@ def transposer(midi_file):
 
 from torch.utils.data import Dataset, DataLoader
 
+
 class MidiDataset(Dataset):
     """Pre-processed MIDI dataset."""
-
     def __init__(self, csv_file, transform, midi_start=48, midi_end=108):
         """
         Args:
@@ -82,11 +97,18 @@ class MidiDataset(Dataset):
         """
 
         dtypes = {'piano_roll_name': 'str', 'timestep': 'uint32'}
-        column_names = [pretty_midi.note_number_to_name(n) for n in range(midi_start, midi_end)]
+        column_names = [
+            pretty_midi.note_number_to_name(n)
+            for n in range(midi_start, midi_end)
+        ]
         for column in column_names:
             dtypes[column] = 'uint8'
 
-        self.piano_rolls = pd.read_csv(csv_file, sep=',', index_col=['piano_roll_name', 'timestep'], dtype=dtypes)
+        self.piano_rolls = pd.read_csv(
+            csv_file,
+            sep=',',
+            index_col=['piano_roll_name', 'timestep'],
+            dtype=dtypes)
         self.transform = transform
 
         self.init_dataset()
@@ -101,10 +123,10 @@ class MidiDataset(Dataset):
 
         self.index_mapper = []
         for i in indexer:
-            split_count = self.transform.get_sections(len(self.piano_rolls.loc[i].values))
+            split_count = self.transform.get_sections(
+                len(self.piano_rolls.loc[i].values))
             for j in range(0, split_count):
                 self.index_mapper.append((i, j))
-
 
     def __len__(self):
         return len(self.index_mapper)
@@ -149,14 +171,14 @@ class MidiDataset(Dataset):
 
 import math
 
-class BarTransform():
 
+class BarTransform():
     def __init__(self, bars=1, note_count=60):
-        self.split_size = bars*16
+        self.split_size = bars * 16
         self.note_count = note_count
 
     def get_sections(self, sample_length):
-        return math.ceil(sample_length/ self.split_size)
+        return math.ceil(sample_length / self.split_size)
 
     def __call__(self, sample):
         sample_length = len(sample)
@@ -168,10 +190,8 @@ class BarTransform():
             padding = np.zeros((padding_size, self.note_count))
             sample = np.append(sample, padding, axis=0)
 
-
         sections = self.get_sections(sample_length)
         # Split into X equal sections
         split_list = np.array_split(sample, indices_or_sections=sections)
-
 
         return split_list

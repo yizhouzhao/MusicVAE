@@ -8,7 +8,7 @@ import os
 print(os.getcwd())
 
 
-def PreprocessMIDIPiano(midi_file : str, save_file : str, append_csv = False):
+def PreprocessMIDIPiano(midi_file: str, save_file: str, append_csv=False):
     '''
     Preprocess MIDI music file to data matrix for training
     :param
@@ -18,8 +18,11 @@ def PreprocessMIDIPiano(midi_file : str, save_file : str, append_csv = False):
     '''
 
     if not append_csv:
-        saved_columns = [pretty_midi.note_number_to_name(n) for n in range(36, 96)]
-        piano_rolls = pd.DataFrame(columns=['piano_roll_name', 'timestep'] + saved_columns)
+        saved_columns = [
+            pretty_midi.note_number_to_name(n) for n in range(36, 96)
+        ]
+        piano_rolls = pd.DataFrame(columns=['piano_roll_name', 'timestep'] +
+                                   saved_columns)
         piano_rolls = piano_rolls.set_index(['piano_roll_name', 'timestep'])
         piano_rolls.to_csv(save_file, sep=',', encoding='utf-8')
 
@@ -30,12 +33,13 @@ def PreprocessMIDIPiano(midi_file : str, save_file : str, append_csv = False):
     pm = pretty_midi.PrettyMIDI(midi_file)
 
     #Get sample freqency for data matrix(piano roll) according to the Sixteenth note ??
-    sampling_freq = 1/ (pm.get_beats()[1]/4)
+    sampling_freq = 1 / (pm.get_beats()[1] / 4)
 
     # Only deal with the MIDI pieces that have one instrument as acoustic grand piano
     #print(len(pm.instruments) == 1)
     if len(pm.instruments) > 1:
-        raise Exception("Sorry, deal with the MIDI pieces that have one instrument")
+        raise Exception(
+            "Sorry, deal with the MIDI pieces that have one instrument")
     instrument = pm.instruments[0]
     #print(pretty_midi.program_to_instrument_name(int(instrument.program)))
     #assert int(instrument.program) == 0
@@ -66,7 +70,7 @@ def PreprocessMIDIPiano(midi_file : str, save_file : str, append_csv = False):
     df.to_csv(save_file, sep=',', mode='a', encoding='utf-8', header=False)
 
 
-def PreprocessMIDIPianoFiles(midi_files : list, save_file : str):
+def PreprocessMIDIPianoFiles(midi_files: list, save_file: str):
     '''
     Preprocess MIDI music files to csv file
     :param
@@ -81,6 +85,7 @@ def PreprocessMIDIPianoFiles(midi_files : list, save_file : str):
             has_file = True
         else:
             PreprocessMIDIPiano(midi_file, save_file, True)
+
 
 if __name__ == "__main__":
     pass
