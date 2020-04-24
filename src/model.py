@@ -44,6 +44,7 @@ class VariationalAutoencoder(nn.Module):
         self.linear = nn.Linear(decoders_initial_size, NUM_PITCHES)
 
     # used to initialize the hidden layer of the encoder to zero before every batch
+    # nn.LSTM will do this by itself, this might be redunt. Look at: https://discuss.pytorch.org/t/when-to-initialize-lstm-hidden-state/2323/16
     def init_hidden(self, batch_size):
         # must be 2 x batch x hidden_size because its a bi-directional LSTM
         init = torch.zeros(2, batch_size, enc_hidden_size, device=device)
@@ -82,12 +83,13 @@ class VariationalAutoencoder(nn.Module):
         outputs = {}
 
         # creates hidden layer values
+        # nn.LSTM() will create zero initial states by default
         h0, c0, hconductor, cconductor = self.init_hidden(batch_size)
 
         x = self.worddropout(x)
 
         # resets encoder at the beginning of every batch and gives it x
-        x, hidden = self.encoder(x, (h0, c0))
+        x, _ = self.encoder(x, (h0, c0))
 
         # x=self.dropout(x)
 
@@ -105,6 +107,7 @@ class VariationalAutoencoder(nn.Module):
         # :- Reparametrisation trick
         # a sample from N(mu, sigma) is mu + sigma * epsilon
         # where epsilon ~ N(0, 1)
+        # TODO: try gumbel-softmax for easier interpretion?
 
         # Don't propagate gradients through randomness
         with torch.no_grad():
@@ -140,11 +143,13 @@ class VariationalAutoencoder(nn.Module):
                             device=device)
 
         # For the first timestep the note is the embedding
+        # This line is duplicate of line 79
         note = torch.zeros(batch_size, 1, NUM_PITCHES, device=device)
 
         # print(z[:,0,:].view(batch_size,1, -1).shape)
 
         # Go through each element in the latent sequence
+        # TODO: z.shape[1] = 512? why for i in range(16), only use the first 16?
         for i in range(16):
             embedding, conductor_hidden = self.conductor(
                 z[:, 16 * i, :].view(batch_size, 1, -1), conductor_hidden)

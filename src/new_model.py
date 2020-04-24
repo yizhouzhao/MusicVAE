@@ -262,7 +262,8 @@ class VAECell(nn.Module):
         #print("x encoder", x.shape)
         x = self.encoderOut(x)
 
-        mu_var_list = torch.chunk(x, 2 * m_key_count, dim=-1)
+        # This is never used
+        # mu_var_list = torch.chunk(x, 2 * m_key_count, dim=-1)
 
         # Split encoder outputs into a mean and variance vector
         mu_list, log_var_list = torch.chunk(x, 2, dim=-1)
@@ -303,11 +304,11 @@ class VAECell(nn.Module):
                 1, 2)
             w1_times_hi = torch.bmm(
                 w_1_h,
-                z_horizontal_bars_reshaped)  #batch x dim x (bars * keys)
+                z_horizontal_bars_reshaped)  #batch x energy_dim x (bars * keys)
             w1_times_hi = w1_times_hi + b_h
             w2_times_hj = torch.bmm(
                 w_2_h,
-                z_horizontal_bars_reshaped)  # batch x dim x (bars * keys)
+                z_horizontal_bars_reshaped)  # batch x energy_dim x (bars * keys)
 
             #reshape
             w1_times_hi = w1_times_hi.view(batch_size, m_key_energy_dim,
