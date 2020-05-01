@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader, random_split
 '''
 FILE INFO
 '''
-data_file = '/home/liang/Workspace/piano_rolls_0.csv'  #training dataset file
+data_file = 'E:/researches/MusicVAE/training_data/piano_rolls_0.csv'  #training dataset file
 '''
 DEVICE INFO
 '''
@@ -48,17 +48,17 @@ dropout_rate = 0.2
 TRAIN
 '''
 learning_rate = 1e-3
-num_epochs = 20
+num_epochs = 100
 warmup_epochs = 10
 pre_warmup_epochs = 10
 log_frequency = 5
 '''
 NEW MODEL
 '''
-m_key_count = 5  #number of key pressed at one time
+m_key_count = 3  #number of key pressed at one time
 m_key_energy_dim = 20  #structure attention energy dim
 use_new_model = True
 use_attention = True
 use_dependency_tree_vertical = True
-use_dependency_tree_horizontal = True
-use_permutation_loss = False
+use_dependency_tree_horizontal = False
+use_permutation_loss = True
