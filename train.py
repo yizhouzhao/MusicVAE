@@ -87,7 +87,7 @@ if __name__ == "__main__":
     # The Adam optimizer works really well with VAEs.
     optimizer = optim.Adam(net.parameters(), lr=learning_rate)
 
-    if use_new_model:
+    if use_new_model and use_new_loss:
         loss_function = ELBO_loss_Multi
     else:
         loss_function = ELBO_loss2
@@ -158,7 +158,7 @@ if __name__ == "__main__":
             mu, log_var = outputs['mu'], outputs['log_var']
 
             #elbo, kl, kl_w = loss_function(x_hat, x, mu, log_var, warmup_w, with_logits=False)
-            if use_new_model:
+            if use_new_model and use_new_loss:
                 multi_notes = outputs["multi_notes"]
                 elbo, kl, kl_w = loss_function(multi_notes, x, mu, log_var,
                                                warmup_w)
@@ -257,7 +257,7 @@ if __name__ == "__main__":
             mu, log_var = outputs['mu'], outputs['log_var']
             z = outputs["z"]
 
-            if use_new_model:
+            if use_new_model and use_new_loss:
                 multi_notes = outputs["multi_notes"]
                 elbo, kl, klw = loss_function(multi_notes, x, mu, log_var,
                                               warmup_w)

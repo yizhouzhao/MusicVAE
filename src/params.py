@@ -27,7 +27,7 @@ shuffle = True
 MODEL SETTINGS
 '''
 NOTESPERBAR = 16  #total notes in one bar
-totalbars = 32  #total bars as input
+totalbars = 16  #total bars as input
 NUM_PITCHES = 60 + 1  # all possible notes to play +1 for silences
 TOTAL_NOTES = NOTESPERBAR * totalbars
 num_features = NUM_PITCHES  #size of input feature vector
@@ -55,10 +55,17 @@ log_frequency = 5
 '''
 NEW MODEL
 '''
-m_key_count = 3  #number of key pressed at one time
+m_key_count = 2  #number of key pressed at one time
 m_key_energy_dim = 20  #structure attention energy dim
 use_new_model = True
 use_attention = True
 use_dependency_tree_vertical = True
-use_dependency_tree_horizontal = False
+use_dependency_tree_horizontal = True
 use_permutation_loss = True
+
+use_new_loss = False
+'''
+MIDI Pitches
+'''
+m_midi_start = 48
+m_midi_end = 108

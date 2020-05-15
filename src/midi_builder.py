@@ -4,10 +4,12 @@ import pretty_midi
 import matplotlib.pyplot as plt
 import librosa.display as display
 
+from src.params import  m_midi_end, m_midi_start
+
 
 class MidiBuilder():
     """Build a MIDI from a piano roll sample"""
-    def __init__(self, midi_start=48, midi_end=108):
+    def __init__(self, midi_start=m_midi_start, midi_end=m_midi_end):
         """
         Args:
             midi_start (int): The first midi note in the dataset

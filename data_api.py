@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import os
+from src.params import m_midi_start, m_midi_end
 
 print(os.getcwd())
 
@@ -19,7 +20,7 @@ def PreprocessMIDIPiano(midi_file: str, save_file: str, append_csv=False):
 
     if not append_csv:
         saved_columns = [
-            pretty_midi.note_number_to_name(n) for n in range(36, 96)
+            pretty_midi.note_number_to_name(n) for n in range(m_midi_start, m_midi_end)
         ]
         piano_rolls = pd.DataFrame(columns=['piano_roll_name', 'timestep'] +
                                    saved_columns)

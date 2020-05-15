@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import pretty_midi
 import music21
+from src.params import m_midi_start, m_midi_end
 
 
 def encode_dummies(instrument, sampling_freq):
@@ -35,11 +36,11 @@ def chopster(dframe):
     df_max = dframe.max(axis=0)
 
     dframe.drop(
-        labels=[pretty_midi.note_number_to_name(n) for n in range(108, 128)],
+        labels=[pretty_midi.note_number_to_name(n) for n in range(m_midi_end, 128)],
         axis=1,
         inplace=True)
     dframe.drop(
-        labels=[pretty_midi.note_number_to_name(n) for n in range(0, 48)],
+        labels=[pretty_midi.note_number_to_name(n) for n in range(0, m_midi_start)],
         axis=1,
         inplace=True)
     return dframe

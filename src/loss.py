@@ -123,8 +123,8 @@ def ELBO_loss2(y, t, mu, log_var, weight, multi_notes = None):
     ELBO = torch.sum(likelihood) - (weight * torch.mean(kl_div))  # add a weight to the kl using warmup
 
     divergence_loss = 0.0
-    if multi_notes != None:
-        divergence_loss +=  0.001 * torch.sum((multi_notes[:,:,0,:] - multi_notes[:,:,1,:])**2)
+    # if multi_notes != None:
+    #    divergence_loss +=  0.001 * torch.sum((multi_notes[:,:,0,:] - multi_notes[:,:,1,:])**2)
 
 
     # notice minus sign as we want to maximise ELBO

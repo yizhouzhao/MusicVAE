@@ -256,6 +256,11 @@ class VAECell(nn.Module):
             w_1_h, w_2_h, b_h, s_h = self.modify_weight_and_bias_horizontal(
                 batch_size)
 
+            h_mask = torch.zeros(batch_size, totalbars, totalbars, device=device)
+            for i in range(totalbars):
+                for j in range(i):
+                    h_mask[:, i, j] = 1.0
+
         # resets encoder at the beginning of every batch and gives it x
         x, hidden = self.encoder(x, (h0, c0))
 
@@ -283,7 +288,7 @@ class VAECell(nn.Module):
         sigma = torch.exp(log_var_list * 2)
 
         # generate z - latent space
-        z = mu_list + epsilon * sigma
+        z = mu_list + 0.1 * epsilon * sigma
 
         #separate keys
         z_list = z.view(batch_size, note_length, m_key_count, -1)
@@ -364,6 +369,8 @@ class VAECell(nn.Module):
             # print("log_potentials_h", log_potentials_h[0,0])
             # exit()
 
+        dist_print_all = []
+        dist_print_all2 = []
         #Vertial attention
         for i in range(note_length // NOTESPERBAR):
             z_horizontal = z_list[:, NOTESPERBAR * i, :, :]
@@ -394,7 +401,8 @@ class VAECell(nn.Module):
                 #
                 # print("begin time", begin_time)
                 # print("end time: ", end_time)
-                # print(log_potentials)
+                # print("log_potentials_v shape", log_potentials_v.shape)
+                # print("log_potentials_v", log_potentials_v)
 
                 # log_potentials = torch.zeros(batch_size, m_key_count,
                 #                             m_key_count, device = device)
@@ -422,6 +430,8 @@ class VAECell(nn.Module):
                 # exit()
 
                 dist_v = NonProjectiveDependencyCRF(log_potentials_v)
+                # print(i, "dist_v: ", dist_v.marginals)
+                dist_print_all2.append(dist_v.marginals[0,:,0].cpu().detach().numpy())
 
                 # if np.random.rand() < 0.005:
                 #     print("z_horizontal", z_horizontal[0])
@@ -430,6 +440,7 @@ class VAECell(nn.Module):
                 #     print("log potentials vertiacal", log_potentials_v[0])
                 #     print("dist",dist_v.marginals[0])
 
+                dist_print = np.zeros(totalbars)
                 for j in range(m_key_count):
                     current_z = z_horizontal[:, j, :]
                     current_h_conducter = hconductor[:, :, j, :].contiguous()
@@ -443,11 +454,22 @@ class VAECell(nn.Module):
                         z_horizontal_bars_j = z_horizontal_bars[:, :, j, :]
                         dist_h = NonProjectiveDependencyCRF(
                             log_potentials_h[:, j, :, :].contiguous())
-                        context_h = dist_h.marginals[:, :, i].unsqueeze(1).bmm(
+                        # print(i, j, "dist_h", dist_h.marginals[:, :, i])
+                        # print("mask", h_mask[:, i, :].shape)
+
+                        masked_marginals = dist_h.marginals[:, :, i] #* h_mask[:, i, :]
+                        dist_print += masked_marginals[0].cpu().detach().numpy()
+
+                        # print(i,j,"masked_marginals", masked_marginals)
+
+                        #masked_marginals = masked_marginals / (torch.sum(masked_marginals, dim=1, keepdim=True) + 1e-4)
+
+                        context_h = masked_marginals.unsqueeze(1).bmm(
                             z_horizontal_bars_j).squeeze(1)
-                        #print("z_horizontal_bars_j", z_horizontal_bars_j.shape)
+                        # print("z_horizontal_bars_j", z_horizontal_bars_j.shape)
                         # if np.random.rand() < 0.05:
-                        #     print("log potentials horizontal", log_potentials_h[0,j])
+                        #    print(j, "log potentials horizontal", log_potentials_h[0,j])
+                        #    print("masked_marginals", masked_marginals)
                         conductor_input = torch.cat(
                             (current_z, context_h, context_v), dim=1)
 
@@ -487,6 +509,8 @@ class VAECell(nn.Module):
 
                     multi_notes[:, range(i * 16, i * 16 + 16), j, :] = aux
                     #notes[:, range(i * 16, i * 16 + 16), :] += aux / m_key_count  # !!!!!
+                # print(i, "dist_print: ", dist_print)
+                dist_print_all.append(dist_print / m_key_count)
             else:  # use normal attention
                 for j in range(m_key_count):
                     current_z = z_horizontal[:, j, :]
@@ -505,7 +529,7 @@ class VAECell(nn.Module):
                         conductor_input = torch.cat((current_z, context),
                                                     dim=1)
 
-                        #print("conductor_input", conductor_input.shape)
+                        # print("conductor_input", conductor_input.shape)
                         # print("current_h", current_h.shape)
                         # print("current_c", current_c.shape)
                         embedding, (current_h_conducter,
@@ -559,6 +583,10 @@ class VAECell(nn.Module):
         outputs["mu"] = mu_list
         outputs["log_var"] = log_var_list
         outputs["multi_notes"] = multi_notes
+        outputs["print"] = np.asarray(dist_print_all)
+        outputs["print2"] = np.asarray(dist_print_all2)
+
+        # print(np.asarray(dist_print_all))
 
         return outputs
 
